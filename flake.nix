@@ -15,7 +15,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
       in
       {
-        devShells.default = pkgs.mkShell { packages = [ pkgs.nodejs_20 pkgs.azure-functions-core-tools pkgs.git ]; };
+        devShells.default = pkgs.mkShell { packages = [ pkgs.nodejs_22 pkgs.azure-functions-core-tools pkgs.git ]; };
       }
     );
 }
