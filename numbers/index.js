@@ -3,7 +3,7 @@ const assert = require('assert');
 const morgan = require('morgan');
 
 const app = express()
-app.use(express.static('front_end/dist/'))
+app.use(express.static('dist'))
 
 //Talla saadaan uusi tokeni kayttoon loggerissa, joka nayttaa pyynnon bodyn merkkijonona
 morgan.token('body', (req, res) => {
@@ -80,12 +80,12 @@ app.post('/api/persons', (request, response) => {
 		response.status(400).json({ error: `missing attributes` })
 	}
 
-	const id = Math.floor(Math.random() * 100000);
-	console.log(id)
+	const id = Math.floor(Math.random() * 100000).toString();
 	person.id = id
-	persons = [...persons, person]
+	persons.push(person) 
+	console.log(persons)
 
-	response.status(201).end()
+	response.status(201).json(person)
 
 })
 
