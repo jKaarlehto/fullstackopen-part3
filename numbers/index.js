@@ -1,8 +1,15 @@
-const express = require('express')
+const express = require('express');
 const assert = require('assert');
-const { warn } = require('console');
+const morgan = require('morgan');
 
 const app = express()
+
+//Talla saadaan uusi tokeni kayttoon loggerissa, joka nayttaa pyynnon bodyn merkkijonona
+morgan.token('body', (req, res) => { 
+    return (Object.entries(req.body).length != 0) ? JSON.stringify(req.body) : null
+})
+//Kaytetaan 'dev' presettia, jonka peraan lisatty uusi :body token
+app.use(morgan(':method :url :status :response-time ms - :res[content-length] :body'))
 app.use(express.json())
 
 let persons = [
@@ -80,6 +87,12 @@ app.post('/api/persons', (request,response) => {
     response.status(201).end()
 
 })
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+app.use(unknownEndpoint)
 
 const PORT = 3001
 app.listen({

@@ -11,6 +11,7 @@
   "author": "Juhana Kaarlehto",
   "license": "ISC",
   "devDependencies": {
+    "morgan": "^1.10.0",
     "nodemon": "^3.1.9"
   },
   "dependencies": {
