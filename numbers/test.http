@@ -10,13 +10,10 @@ client.global.set("personId",body[1].id)
 %}
 ###
 
-
-
 POST localhost:3001/api/persons
 Content-Type: application/json
 
-{"name":"Aislinn Marmion", "number":"044-1234-1223"}
-
+{"name":"bobi","number":"123"}
 ###
 
 DELETE localhost:3001/api/persons/{{personId}}
