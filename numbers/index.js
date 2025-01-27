@@ -4,6 +4,29 @@ const morgan = require('morgan');
 
 const app = express()
 
+
+const azureResponseCompatMiddleware = (req, res, next) => {
+  // Add removeHeader if missing
+  if (typeof res.removeHeader !== 'function') {
+    res.removeHeader = function(name) {
+      // Simple implementation: delete from headers object
+      delete this.headers[name.toLowerCase()];
+    };
+  }
+
+  // Add setHeader if missing
+  if (typeof res.setHeader !== 'function') {
+    res.setHeader = function(name, value) {
+      // Initialize headers object if needed
+      if (!this.headers) this.headers = {};
+      this.headers[name.toLowerCase()] = value;
+    };
+  }
+
+  next();
+}
+app.use(azureResponseCompatMiddleware)
+
 //Talla saadaan uusi tokeni kayttoon loggerissa, joka nayttaa pyynnon bodyn merkkijonona
 morgan.token('body', (req, res) => { 
     return (Object.entries(req.body).length != 0) ? JSON.stringify(req.body) : null
@@ -95,9 +118,4 @@ const unknownEndpoint = (request, response) => {
 app.use(unknownEndpoint)
 
 const PORT = 3001
-app.listen({
-	port: PORT,
-	callback: () => {
-		console.log(`Listening on port ${PORT}`)
-	}
-})
+app.listen(PORT);
