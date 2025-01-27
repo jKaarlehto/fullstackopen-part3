@@ -3,7 +3,7 @@ const assert = require('assert');
 const morgan = require('morgan');
 
 const app = express()
-
+app.use(express.static('front_end/dist/'))
 
 //Talla saadaan uusi tokeni kayttoon loggerissa, joka nayttaa pyynnon bodyn merkkijonona
 morgan.token('body', (req, res) => {
