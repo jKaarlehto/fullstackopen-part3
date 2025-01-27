@@ -6,56 +6,56 @@ const app = express()
 
 
 const azureResponseCompatMiddleware = (req, res, next) => {
-  // Add removeHeader if missing
-  if (typeof res.removeHeader !== 'function') {
-    res.removeHeader = function(name) {
-      // Simple implementation: delete from headers object
-      delete this.headers[name.toLowerCase()];
-    };
-  }
+	// Add removeHeader if missing
+	if (typeof res.removeHeader !== 'function') {
+		res.removeHeader = function(name) {
+			// Simple implementation: delete from headers object
+			delete this.headers[name.toLowerCase()];
+		};
+	}
 
-  // Add setHeader if missing
-  if (typeof res.setHeader !== 'function') {
-    res.setHeader = function(name, value) {
-      // Initialize headers object if needed
-      if (!this.headers) this.headers = {};
-      this.headers[name.toLowerCase()] = value;
-    };
-  }
+	// Add setHeader if missing
+	if (typeof res.setHeader !== 'function') {
+		res.setHeader = function(name, value) {
+			// Initialize headers object if needed
+			if (!this.headers) this.headers = {};
+			this.headers[name.toLowerCase()] = value;
+		};
+	}
 
-  next();
+	next();
 }
 app.use(azureResponseCompatMiddleware)
 
 //Talla saadaan uusi tokeni kayttoon loggerissa, joka nayttaa pyynnon bodyn merkkijonona
-morgan.token('body', (req, res) => { 
-    return (Object.entries(req.body).length != 0) ? JSON.stringify(req.body) : null
+morgan.token('body', (req, res) => {
+	return (Object.entries(req.body).length != 0) ? JSON.stringify(req.body) : null
 })
 //Kaytetaan 'dev' presettia, jonka peraan lisatty uusi :body token
 app.use(morgan(':method :url :status :response-time ms - :res[content-length] :body'))
 app.use(express.json())
 
 let persons = [
-  {
-    "id": "1",
-    "name": "Arto Hellas",
-    "number": "040-123456"
-  },
-  {
-    "id": "2",
-    "name": "Ada Lovelace",
-    "number": "39-44-5323523"
-  },
-  {
-    "id": "3",
-    "name": "Dan Abramov",
-    "number": "12-43-234345"
-  },
-  {
-    "id": "4",
-    "name": "Mary Poppendieck",
-    "number": "39-23-6423122"
-  }
+	{
+		"id": "1",
+		"name": "Arto Hellas",
+		"number": "040-123456"
+	},
+	{
+		"id": "2",
+		"name": "Ada Lovelace",
+		"number": "39-44-5323523"
+	},
+	{
+		"id": "3",
+		"name": "Dan Abramov",
+		"number": "12-43-234345"
+	},
+	{
+		"id": "4",
+		"name": "Mary Poppendieck",
+		"number": "39-23-6423122"
+	}
 ]
 
 app.get('/', (request, response) => {
@@ -63,16 +63,16 @@ app.get('/', (request, response) => {
 })
 
 app.get('/api/persons', (request, response) => {
-    response.send(persons)
+	response.send(persons)
 })
 
 app.get('/info', (request, response) => {
-    response.send(
-	`
+	response.send(
+		`
 	<p> Phonebook has information about ${persons.length} people.</p>
 	<p>${Date()}</p>
 	`
-    )
+	)
 })
 
 
@@ -83,39 +83,41 @@ app.get('/api/persons/:id', (request, response) => {
 	response.json(person)
 })
 
-app.delete('/api/persons/:id',(request, response) => {
-    const id = request.params.id
-    const person = persons.find(person => person.id === id)
-    if (!person) response.status(404).end()
-    persons = persons.filter(person => person.id != id)
-    assert(undefined === persons.find(person => person.id === id))
-    response.status(200).end()
+app.delete('/api/persons/:id', (request, response) => {
+	const id = request.params.id
+	const person = persons.find(person => person.id === id)
+	if (!person) response.status(404).end()
+	persons = persons.filter(person => person.id != id)
+	assert(undefined === persons.find(person => person.id === id))
+	response.status(200).end()
 })
 
-app.post('/api/persons', (request,response) => {
-    const person = request.body
-    console.log(person)
-    if (persons.find(existingPerson => existingPerson.name === person.name)) {
-	response.status(409).json({error:`person with the name ${person.name} exists`})
-    }
-    if (!person.name || !person.number) {
-	response.status(400).json({error:`missing attributes`})
-    }
+app.post('/api/persons', (request, response) => {
+	const person = request.body
+	console.log(person)
+	if (persons.find(existingPerson => existingPerson.name === person.name)) {
+		response.status(409).json({ error: `person with the name ${person.name} exists` })
+	}
+	if (!person.name || !person.number) {
+		response.status(400).json({ error: `missing attributes` })
+	}
 
-    const id = Math.floor(Math.random() * 100000);
-    console.log(id)
-    person.id = id
-    persons = [...persons, person]
+	const id = Math.floor(Math.random() * 100000);
+	console.log(id)
+	person.id = id
+	persons = [...persons, person]
 
-    response.status(201).end()
+	response.status(201).end()
 
 })
 
 const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: 'unknown endpoint' })
+	response.status(404).send({ error: 'unknown endpoint' })
 }
 
 app.use(unknownEndpoint)
 
-const PORT = 3001
-app.listen(PORT);
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+	console.log(`Server running on port ${PORT}`);
+})
