@@ -1,0 +1,24 @@
+GET localhost:3001/info
+###
+
+GET localhost:3001/api/persons
+
+# @lang=lua
+> {%
+local body = vim.json.decode(response.body)
+client.global.set("personId",body[1].id)
+%}
+###
+
+
+
+POST localhost:3001/api/persons
+Content-Type: application/json
+
+{"name":"Aislinn Marmion", "number":"044-1234-1223"}
+
+###
+
+DELETE localhost:3001/api/persons/{{personId}}
+
+
