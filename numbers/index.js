@@ -1,8 +1,48 @@
+require('dotenv').config()
+
+const Person = require('./models/person');
 const express = require('express');
 const assert = require('assert');
 const morgan = require('morgan');
 
+const mongoose = require('mongoose')
+
+//Middleware, jolla poistetaan id:t jotka johtavat Typecast herjaan mongoosssa.
+const validateIds = (req, res, next) => {
+	const reqObj = Object.fromEntries(Object.entries(req))
+	const url = reqObj.url
+
+	//tietokannasta ei haeta mitaan
+	if (!url.includes('/persons/')) {
+		console.log(`${url} OK`)
+		next()
+		return
+	}
+
+	let segments = url.split('/')
+
+	//url === {{baseurl}}/persons/	
+	if (!segments[segments.length - 1]) {
+		console.log(`${url} OK`)
+		next()
+		return
+	}
+
+	id = segments.find(seg => segments[segments.indexOf(seg) - 1] === 'persons')
+	id = isNaN(Number(id)) ? id : Number(id)
+	if (!mongoose.Types.ObjectId.isValid(id)) {
+		console.log(`validateIds: ${id} is not a vaild MongoDB id.`)
+		return res.status(400).json(
+			{ error: `${id} is not valid. id must be a 24 character hex string, 12 byte Uint8Array, or an integer.` }
+		)
+	}
+	console.log(`validateIds: ${id} is a valid MongoDB id. (App still crashes on int ids)`)
+	next()
+	return
+}
+
 const app = express()
+app.use(validateIds)
 app.use(express.static('dist'))
 
 //Talla saadaan uusi tokeni kayttoon loggerissa, joka nayttaa pyynnon bodyn merkkijonona
@@ -13,80 +53,71 @@ morgan.token('body', (req, res) => {
 app.use(morgan(':method :url :status :response-time ms - :res[content-length] :body'))
 app.use(express.json())
 
-let persons = [
-	{
-		"id": "1",
-		"name": "Arto Hellas",
-		"number": "040-123456"
-	},
-	{
-		"id": "2",
-		"name": "Ada Lovelace",
-		"number": "39-44-5323523"
-	},
-	{
-		"id": "3",
-		"name": "Dan Abramov",
-		"number": "12-43-234345"
-	},
-	{
-		"id": "4",
-		"name": "Mary Poppendieck",
-		"number": "39-23-6423122"
-	}
-]
-
 app.get('/', (request, response) => {
 	response.send('<h1> Persons </h1>')
 })
 
 app.get('/api/persons', (request, response) => {
-	response.send(persons)
+	Person.find({}).then(dbresponse => {
+		response.send(dbresponse)
+	})
 })
 
 app.get('/info', (request, response) => {
-	response.send(
-		`
-	<p> Phonebook has information about ${persons.length} people.</p>
+	Person.find({}).then(dbresponse => {
+		response.send(
+			`
+	<p> Phonebook has information about ${dbresponse.length} people.</p>
 	<p>${Date()}</p>
 	`
-	)
+		)
+	})
 })
 
 
 app.get('/api/persons/:id', (request, response) => {
-	const id = request.params.id
-	const person = persons.find(person => person.id === id)
-	if (!person) response.status(404).end()
-	response.json(person)
+	const reqId = request.params.id
+	Person.findById(reqId).then(dbresponse => {
+		if (dbresponse === null) {
+			response.status(404).json({ error: `no records for id: ${reqId}` })
+			return
+		}
+		response.json(dbresponse)
+	})
 })
-
 app.delete('/api/persons/:id', (request, response) => {
-	const id = request.params.id
-	const person = persons.find(person => person.id === id)
-	if (!person) response.status(404).end()
-	persons = persons.filter(person => person.id != id)
-	assert(undefined === persons.find(person => person.id === id))
-	response.status(200).end()
+	const reqId = request.params.id
+	console.log("deleting")
+	Person.findByIdAndDelete(reqId).then(dbresponse => {
+		console.log(dbresponse)
+		if (dbresponse === null) {
+			response.status(404).json({ error: `cant delete ${reqId}, no records found in database` })
+			return
+		}
+		response.status(204).end()
+	})
+
 })
 
 app.post('/api/persons', (request, response) => {
-	const person = request.body
-	console.log(person)
-	if (persons.find(existingPerson => existingPerson.name === person.name)) {
-		response.status(409).json({ error: `person with the name ${person.name} exists` })
-	}
-	if (!person.name || !person.number) {
-		response.status(400).json({ error: `missing attributes` })
-	}
+	let person = request.body
+	Person.find({ name: person.name }).then(dbresponse => {
+		console.log(Object.entries(dbresponse))
+		if (dbresponse.length > 0) {
+			response.status(409).json({ error: `person with the name ${person.name} exists` })
+			return
+		}
+		if (!person.name || !person.number) {
+			response.status(400).json({ error: `missing attributes` })
+			return
+		}
+		person = new Person(person)
+		person.save().then(dbresponse => {
+			console.log(`created ok. dbresponse: ${dbresponse}`)
+			response.status(201).json(dbresponse)
+		})
 
-	const id = Math.floor(Math.random() * 100000).toString();
-	person.id = id
-	persons.push(person) 
-	console.log(persons)
-
-	response.status(201).json(person)
-
+	})
 })
 
 const unknownEndpoint = (request, response) => {
