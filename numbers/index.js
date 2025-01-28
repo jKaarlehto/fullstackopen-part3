@@ -7,14 +7,16 @@ const morgan = require('morgan');
 
 const mongoose = require('mongoose')
 
+
 //Middleware, jolla poistetaan id:t jotka johtavat Typecast herjaan mongoosssa.
+//tehty jo ennen error handling middlewaren ohjetta. tama siis blokkaa kutsut joissa malformed id ennekuin ne paasevat mongoosia kutsuviin funktioihin
+
 const validateIds = (req, res, next) => {
 	const reqObj = Object.fromEntries(Object.entries(req))
 	const url = reqObj.url
 
 	//tietokannasta ei haeta mitaan
 	if (!url.includes('/persons/')) {
-		console.log(`${url} OK`)
 		next()
 		return
 	}
@@ -23,20 +25,23 @@ const validateIds = (req, res, next) => {
 
 	//url === {{baseurl}}/persons/	
 	if (!segments[segments.length - 1]) {
-		console.log(`${url} OK`)
 		next()
 		return
 	}
 
 	id = segments.find(seg => segments[segments.indexOf(seg) - 1] === 'persons')
-	id = isNaN(Number(id)) ? id : Number(id)
+
+	if (!(isNaN(Number(id)))) {
+		return res.status(400).json(`Integer id's prohibited`)
+	}
+
 	if (!mongoose.Types.ObjectId.isValid(id)) {
 		console.log(`validateIds: ${id} is not a vaild MongoDB id.`)
 		return res.status(400).json(
-			{ error: `${id} is not valid. id must be a 24 character hex string, 12 byte Uint8Array, or an integer.` }
+			{ error: `${id} is not valid. id must be a 24 character hex string or a 12 byte Uint8Array.` }
 		)
 	}
-	console.log(`validateIds: ${id} is a valid MongoDB id. (App still crashes on int ids)`)
+	console.log(`validateIds: ${id} is a valid MongoDB id.`)
 	next()
 	return
 }
@@ -75,31 +80,43 @@ app.get('/info', (request, response) => {
 })
 
 
-app.get('/api/persons/:id', (request, response) => {
-	const reqId = request.params.id
+const errorHandler = (error, request, response, next) => {
+	console.error(error.message)
+	if (error.name === 'CastError') {
+		return response.status(400).send({ error: 'malformatted id' })
+	}
+	next(error)
+}
+
+
+app.get('/api/persons/:id', (request, response, next) => {
+	let reqId = request.params.id
+	reqId = isNaN((reqId)) ? reqId : Number(reqId)
+
 	Person.findById(reqId).then(dbresponse => {
 		if (dbresponse === null) {
 			response.status(404).json({ error: `no records for id: ${reqId}` })
 			return
 		}
 		response.json(dbresponse)
-	})
+	}).catch(error => next(error))
 })
-app.delete('/api/persons/:id', (request, response) => {
-	const reqId = request.params.id
-	console.log("deleting")
+app.delete('/api/persons/:id', (request, response, next) => {
+	let reqId = request.params.id
+	reqId = isNaN(Number(reqId)) ? reqId : Number(reqId)
+
 	Person.findByIdAndDelete(reqId).then(dbresponse => {
 		console.log(dbresponse)
 		if (dbresponse === null) {
-			response.status(404).json({ error: `cant delete ${reqId}, no records found in database` })
+			response.status(204).json({ message: ` ${reqId}, no records found in database` })
 			return
 		}
 		response.status(204).end()
-	})
+	}).catch(error => next(error))
 
 })
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
 	let person = request.body
 	Person.find({ name: person.name }).then(dbresponse => {
 		console.log(Object.entries(dbresponse))
@@ -117,7 +134,22 @@ app.post('/api/persons', (request, response) => {
 			response.status(201).json(dbresponse)
 		})
 
-	})
+	}).catch(error => next(error))
+})
+
+
+
+//tama tehty patchilla koska frontend kayttaa patchia
+app.patch('/api/persons/:id', (request, response, next) => {
+	const reqId = request.params.id
+	const fields = { ...request.body }
+	Person.findByIdAndUpdate(reqId, fields, { new: true }).then(dbresponse => {
+		if (dbresponse === null) {
+			response.status(404).json({ message: ` ${reqId}, no records found in database` })
+			return
+		}
+		response.json(dbresponse)
+	}).catch(error => next(error))
 })
 
 const unknownEndpoint = (request, response) => {
@@ -126,6 +158,7 @@ const unknownEndpoint = (request, response) => {
 
 app.use(unknownEndpoint)
 
+app.use(errorHandler)
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
 	console.log(`Server running on port ${PORT}`);
