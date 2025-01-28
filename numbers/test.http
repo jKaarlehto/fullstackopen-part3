@@ -16,6 +16,26 @@ Content-Type: application/json
 {"name":"boba","number":"123"}
 ###
 
+#Collision
+POST localhost:3001/api/persons
+Content-Type: application/json
+
+{"name":"boba","number":"321"}
+
+
+###
 DELETE localhost:3001/api/persons/{{personId}}
+###
+
+#Patch
+PATCH localhost:3001/api/persons/{{personId}}
+
+{"name":"changed","number":"9999"}
+
+
+
+
+
+
 
 
